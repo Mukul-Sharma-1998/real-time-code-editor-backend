@@ -17,7 +17,10 @@ import java.util.*;
 
 public class SocketConnectionHandler extends TextWebSocketHandler {
 
+    // map of room id and set of web socket sessions connected to that room id
     private Map<String, Set<WebSocketSession>> roomIdSessionMap = new HashMap<>();
+
+    //map of web socket session id and list which contains username and room id
     private Map<String, List<String>> sessionUserMap = new HashMap<>();
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -32,9 +35,6 @@ public class SocketConnectionHandler extends TextWebSocketHandler {
     @Override
     public  void  afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         super.afterConnectionClosed(session, status);
-//        if(sessionUserMap.containsKey(session.getId())) {
-//            sessionUserMap.remove(session.getId());
-//        }
         System.out.println(session.getId() + " Disconnected");
         System.out.println("session and status after disconnection: "+session + status);
         leaveRoom(session);
@@ -45,30 +45,14 @@ public class SocketConnectionHandler extends TextWebSocketHandler {
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {
         super.handleMessage(session, message);
         
-        System.out.println(message.getPayload());
+        System.out.println("Payload: " + message.getPayload());
         String payload = (String) message.getPayload();
         MessageRequestDto messageDto = objectMapper.readValue(payload, MessageRequestDto.class);
 
         if(messageDto.getType() == Action.JOIN) {
-            if(messageDto.getRoomId() != null) {
-                String roomId = messageDto.getRoomId();
-                if(roomIdSessionMap.containsKey(roomId)) {
-                    if(!roomIdSessionMap.get(roomId).contains(session)) {
-                        roomIdSessionMap.get(roomId).add(session);
-                    }
-                } else {
-                    Set<WebSocketSession> sessions = new HashSet<>();
-                    sessions.add(session);
-                    roomIdSessionMap.put(roomId, sessions);
-                }
-                updateSessionUserMap(session, messageDto);
-            }
-            System.out.println("-------------------------------------");
-            System.out.println(roomIdSessionMap);
-            System.out.println("sessionUserMap: " + sessionUserMap);
-            System.out.println("######################################");
-            broadcastMessageToRoom(session, messageDto, message);
-        } else if (messageDto.getType() == Action.DISCONNECTED) {
+            joinRoom(session, messageDto);
+        } else if (messageDto.getType() == Action.CODE_CHANGE || messageDto.getType() == Action.SYNC_CODE) {
+            changeCode(session, messageDto);
 
         }
 
@@ -111,7 +95,20 @@ public class SocketConnectionHandler extends TextWebSocketHandler {
     }
 
     private  void  joinRoom(WebSocketSession sender, MessageRequestDto messageDto) throws IOException {
-        System.out.println("JOIN");
+        System.out.println("JOIN "+ messageDto);
+        if(messageDto.getRoomId() != null) {
+            String roomId = messageDto.getRoomId();
+            if(roomIdSessionMap.containsKey(roomId)) {
+                if(!roomIdSessionMap.get(roomId).contains(sender)) {
+                    roomIdSessionMap.get(roomId).add(sender);
+                }
+            } else {
+                Set<WebSocketSession> sessions = new HashSet<>();
+                sessions.add(sender);
+                roomIdSessionMap.put(roomId, sessions);
+            }
+            updateSessionUserMap(sender, messageDto);
+        }
 
         MessageResponseDTO broadcastJoiningMessage = new MessageResponseDTO();
         broadcastJoiningMessage.setRoomId(messageDto.getRoomId());
@@ -129,28 +126,29 @@ public class SocketConnectionHandler extends TextWebSocketHandler {
         String broadcastJoiningMessageJson = objectMapper.writeValueAsString(broadcastJoiningMessage);
         Set<WebSocketSession> sessions = roomIdSessionMap.get(messageDto.getRoomId());
         for(WebSocketSession session : sessions) {
-            if(session.isOpen() && !session.equals(sender)) {
+            if(session.isOpen()) {
                 session.sendMessage(new TextMessage(broadcastJoiningMessageJson));
             }
         }
     }
 
-    private void broadcastMessageToRoom(WebSocketSession sender, MessageRequestDto messageDto, WebSocketMessage<?> message) throws Exception {
-        Action type = messageDto.getType();
-        switch (type) {
-            case JOIN:
-                joinRoom(sender, messageDto);
-                break;
-            case LEAVE:
-                break;
-            case SYNC_CODE:
-                break;
-            case CODE_CHANGE:
-                break;
-            case DISCONNECTED:
-                break;
-            case JOINED:
-                break;
+    private  void changeCode(WebSocketSession sender, MessageRequestDto messageRequestDto) throws IOException {
+        String roomId = messageRequestDto.getRoomId();
+        MessageResponseDTO broadcastCodeChangeMessage = new MessageResponseDTO();
+        broadcastCodeChangeMessage.setSessionId(sender.getId());
+        broadcastCodeChangeMessage.setRoomId(roomId);
+        broadcastCodeChangeMessage.setCode(messageRequestDto.getCode());
+        broadcastCodeChangeMessage.setType(Action.CODE_CHANGE);
+        if(sessionUserMap.containsKey(sender.getId())) {
+            broadcastCodeChangeMessage.setUsername(sessionUserMap.get(sender.getId()).get(0));
+        }
+        String broadcastCodeChangeMessageJson = objectMapper.writeValueAsString(broadcastCodeChangeMessage);
+        if(roomIdSessionMap.containsKey(roomId)) {
+            for( WebSocketSession session : roomIdSessionMap.get(roomId)) {
+                if(session.isOpen() && !session.equals(sender)) {
+                    session.sendMessage(new TextMessage(broadcastCodeChangeMessageJson));
+                }
+            }
         }
     }
 }

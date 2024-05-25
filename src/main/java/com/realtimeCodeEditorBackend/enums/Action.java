@@ -10,12 +10,12 @@ import java.io.IOException;
 
 @JsonDeserialize(using = Action.ActionDeserializer.class)
 public enum Action {
-    JOIN("join"),
-    JOINED("joined"),
-    DISCONNECTED("disconnected"),
-    CODE_CHANGE("code-change"),
-    SYNC_CODE("sync_code"),
-    LEAVE("leave");
+    JOIN("JOIN"),
+    JOINED("JOINED"),
+    DISCONNECTED("DISCONNECTED"),
+    CODE_CHANGE("CODE_CHANGE"),
+    SYNC_CODE("SYNC_CODE"),
+    LEAVE("LEAVE");
 
     private final String action;
 

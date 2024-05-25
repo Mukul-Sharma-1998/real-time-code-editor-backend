@@ -12,7 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class MessageRequestDto {
     private String username;
-//    private  String data;
+    private  String code;
     private String sessionId;
     private  String roomId;
     private Action type;

@@ -19,4 +19,5 @@ public class MessageResponseDTO {
     private List<UserSession> sessionUser;
     private  String roomId;
     private Action type;
+    private String code;
 }
