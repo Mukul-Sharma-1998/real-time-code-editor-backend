@@ -45,7 +45,7 @@ public class SocketConnectionHandler extends TextWebSocketHandler {
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {
         super.handleMessage(session, message);
         
-        System.out.println("Payload: " + message.getPayload());
+//        System.out.println("Payload: " + message.getPayload());
         String payload = (String) message.getPayload();
         MessageRequestDto messageDto = objectMapper.readValue(payload, MessageRequestDto.class);
 

@@ -58,3 +58,6 @@
 	</build>
 
 </project>
+
+<!--		ssh -i aws_pem_file.pem ec2-user@16.16.144.154-->
+<!--		$ scp -i aws_pem_file.pem realtimeCodeEditorBackend-0.0.1-SNAPSHOT.jar ec2-user@16.16.144.154:/home/ec2-user-->
